@@ -1,7 +1,12 @@
 package gochimp3
 
+import (
+	"context"
+	"net/http"
+)
+
 const (
-	template_folders_path       = "/template-folders"
+	templateFoldersPath = "/template-folders"
 	// single folder endpoint not implemented
 )
 
@@ -19,7 +24,7 @@ type TemplateFolder struct {
 
 	Name  string `json:"name"`
 	ID    string `json:"id"`
-	Count uint `json:"count"`
+	Count uint   `json:"count"`
 
 	api *API
 }
@@ -28,10 +33,10 @@ type TemplateFolderCreationRequest struct {
 	Name string `json:"name"`
 }
 
-func (api *API) GetTemplateFolders(params *TemplateFolderQueryParams) (*ListOfTemplateFolders, error) {
+func (api *API) GetTemplateFolders(ctx context.Context, params *TemplateFolderQueryParams) (*ListOfTemplateFolders, error) {
 	response := new(ListOfTemplateFolders)
 
-	err := api.Request("GET", template_folders_path, params, nil, response)
+	err := api.Request(ctx, http.MethodGet, templateFoldersPath, params, nil, response)
 	if err != nil {
 		return nil, err
 	}
@@ -43,8 +48,8 @@ func (api *API) GetTemplateFolders(params *TemplateFolderQueryParams) (*ListOfTe
 	return response, nil
 }
 
-func (api *API) CreateTemplateFolder(body *TemplateFolderCreationRequest) (*TemplateFolder, error) {
+func (api *API) CreateTemplateFolder(ctx context.Context, body *TemplateFolderCreationRequest) (*TemplateFolder, error) {
 	response := new(TemplateFolder)
 	response.api = api
-	return response, api.Request("POST", template_folders_path, nil, body, response)
+	return response, api.Request(ctx, http.MethodPost, templateFoldersPath, nil, body, response)
 }

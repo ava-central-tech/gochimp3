@@ -1,33 +1,36 @@
 package gochimp3
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"net/http"
+
+	"github.com/cockroachdb/errors"
 )
 
 const (
-	lists_path       = "/lists"
-	single_list_path = lists_path + "/%s"
+	listsPath      = "/lists"
+	singleListPath = listsPath + "/%s"
 
-	abuse_reports_path       = "/lists/%s/abuse_reports"
-	single_abuse_report_path = abuse_reports_path + "/%s"
+	abuseReportsPath      = "/lists/%s/abuse_reports"
+	singleAbuseReportPath = abuseReportsPath + "/%s"
 
-	activity_path = "/lists/%s/activity"
-	clients_path  = "/lists/%s/clients"
+	activityPath = "/lists/%s/activity"
+	clientsPath  = "/lists/%s/clients"
 
-	history_path        = "/lists/%s/growth-history"
-	single_history_path = history_path + "/%s"
+	historyPath       = "/lists/%s/growth-history"
+	singleHistoryPath = historyPath + "/%s"
 
-	interest_categories_path      = "/lists/%s/interest-categories"
-	single_interest_category_path = interest_categories_path + "/%s"
+	interestCategoriesPath     = "/lists/%s/interest-categories"
+	singleInterestCategoryPath = interestCategoriesPath + "/%s"
 
-	interests_path       = "/lists/%s/interest-categories/%s/interests"
-	single_interest_path = interests_path + "/%s"
+	interestsPath      = "/lists/%s/interest-categories/%s/interests"
+	singleInterestPath = interestsPath + "/%s"
 
-	lists_batch_subscribe_members = "/lists/%s"
+	listsBatchSubscribeMembers = "/lists/%s"
 
-	merge_fields_path = "/lists/%s/merge-fields"
-	merge_field_path  = merge_fields_path + "/%s"
+	mergeFieldsPath = "/lists/%s/merge-fields"
+	mergeFieldPath  = mergeFieldsPath + "/%s"
 )
 
 type ListQueryParams struct {
@@ -117,15 +120,15 @@ type CampaignDefaults struct {
 	Language  string `json:"language"`
 }
 
-func (api *API) GetLists(params *ListQueryParams) (*ListOfLists, error) {
+func (api *API) GetLists(ctx context.Context, params *ListQueryParams) (*ListOfLists, error) {
 	response := new(ListOfLists)
 
-	err := api.Request("GET", lists_path, params, nil, response)
+	err := api.Request(ctx, http.MethodGet, listsPath, params, nil, response)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, _ := range response.Lists {
+	for i := range response.Lists {
 		response.Lists[i].api = api
 	}
 
@@ -143,33 +146,33 @@ func (api *API) NewListResponse(id string) *ListResponse {
 	}
 }
 
-func (api *API) GetList(id string, params *BasicQueryParams) (*ListResponse, error) {
-	endpoint := fmt.Sprintf(single_list_path, id)
+func (api *API) GetList(ctx context.Context, id string, params *BasicQueryParams) (*ListResponse, error) {
+	endpoint := fmt.Sprintf(singleListPath, id)
 
 	response := new(ListResponse)
 	response.api = api
 
-	return response, api.Request("GET", endpoint, params, nil, response)
+	return response, api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (api *API) CreateList(body *ListCreationRequest) (*ListResponse, error) {
+func (api *API) CreateList(ctx context.Context, body *ListCreationRequest) (*ListResponse, error) {
 	response := new(ListResponse)
 	response.api = api
-	return response, api.Request("POST", lists_path, nil, body, response)
+	return response, api.Request(ctx, http.MethodPost, listsPath, nil, body, response)
 }
 
-func (api *API) UpdateList(id string, body *ListCreationRequest) (*ListResponse, error) {
-	endpoint := fmt.Sprintf(single_list_path, id)
+func (api *API) UpdateList(ctx context.Context, id string, body *ListCreationRequest) (*ListResponse, error) {
+	endpoint := fmt.Sprintf(singleListPath, id)
 
 	response := new(ListResponse)
 	response.api = api
 
-	return response, api.Request("PATCH", endpoint, nil, body, response)
+	return response, api.Request(ctx, http.MethodPatch, endpoint, nil, body, response)
 }
 
-func (api *API) DeleteList(id string) (bool, error) {
-	endpoint := fmt.Sprintf(single_list_path, id)
-	return api.RequestOk("DELETE", endpoint)
+func (api *API) DeleteList(ctx context.Context, id string) (bool, error) {
+	endpoint := fmt.Sprintf(singleListPath, id)
+	return api.RequestOk(ctx, http.MethodDelete, endpoint)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -194,26 +197,26 @@ type AbuseReport struct {
 	withLinks
 }
 
-func (list *ListResponse) GetAbuseReports(params *ExtendedQueryParams) (*ListOfAbuseReports, error) {
+func (list *ListResponse) GetAbuseReports(ctx context.Context, params *ExtendedQueryParams) (*ListOfAbuseReports, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(abuse_reports_path, list.ID)
+	endpoint := fmt.Sprintf(abuseReportsPath, list.ID)
 	response := new(ListOfAbuseReports)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (list *ListResponse) GetAbuseReport(id string, params *ExtendedQueryParams) (*AbuseReport, error) {
+func (list *ListResponse) GetAbuseReport(ctx context.Context, id string, params *ExtendedQueryParams) (*AbuseReport, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_abuse_report_path, list.ID, id)
+	endpoint := fmt.Sprintf(singleAbuseReportPath, list.ID, id)
 	response := new(AbuseReport)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -242,15 +245,15 @@ type Activity struct {
 	withLinks
 }
 
-func (list *ListResponse) GetActivity(params *BasicQueryParams) (*ListOfActivity, error) {
+func (list *ListResponse) GetActivity(ctx context.Context, params *BasicQueryParams) (*ListOfActivity, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(activity_path, list.ID)
+	endpoint := fmt.Sprintf(activityPath, list.ID)
 	response := new(ListOfActivity)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -272,15 +275,15 @@ type Client struct {
 	withLinks
 }
 
-func (list *ListResponse) GetClients(params *BasicQueryParams) (*ListOfClients, error) {
+func (list *ListResponse) GetClients(ctx context.Context, params *BasicQueryParams) (*ListOfClients, error) {
 	if list.ID == "" {
 		return nil, errors.New("No ID provided on list")
 	}
 
-	endpoint := fmt.Sprintf(clients_path, list.ID)
+	endpoint := fmt.Sprintf(clientsPath, list.ID)
 	response := new(ListOfClients)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -304,26 +307,26 @@ type GrowthHistory struct {
 	withLinks
 }
 
-func (list *ListResponse) GetGrowthHistory(params *ExtendedQueryParams) (*ListOfGrownHistory, error) {
+func (list *ListResponse) GetGrowthHistory(ctx context.Context, params *ExtendedQueryParams) (*ListOfGrownHistory, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(history_path, list.ID)
+	endpoint := fmt.Sprintf(historyPath, list.ID)
 	response := new(ListOfGrownHistory)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (list *ListResponse) GetGrowthHistoryForMonth(month string, params *BasicQueryParams) (*GrowthHistory, error) {
+func (list *ListResponse) GetGrowthHistoryForMonth(ctx context.Context, month string, params *BasicQueryParams) (*GrowthHistory, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_history_path, list.ID, month)
+	endpoint := fmt.Sprintf(singleHistoryPath, list.ID, month)
 	response := new(GrowthHistory)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -352,9 +355,9 @@ type InterestCategory struct {
 	api *API
 }
 
-func (interestCatgory *InterestCategory) CanMakeRequest() error {
-	if interestCatgory.ID == "" {
-		return errors.New("No ID provided on interest category")
+func (ic *InterestCategory) CanMakeRequest() error {
+	if ic.ID == "" {
+		return errors.New("no ID provided on interest category")
 	}
 
 	return nil
@@ -372,69 +375,69 @@ func (q *InterestCategoriesQueryParams) Params() map[string]string {
 	return m
 }
 
-func (list *ListResponse) GetInterestCategories(params *InterestCategoriesQueryParams) (*ListOfInterestCategories, error) {
+func (list *ListResponse) GetInterestCategories(ctx context.Context, params *InterestCategoriesQueryParams) (*ListOfInterestCategories, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(interest_categories_path, list.ID)
+	endpoint := fmt.Sprintf(interestCategoriesPath, list.ID)
 	response := new(ListOfInterestCategories)
 
-	err := list.api.Request("GET", endpoint, params, nil, response)
+	err := list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, _ := range response.Categories {
+	for i := range response.Categories {
 		response.Categories[i].api = list.api
 	}
 
 	return response, nil
 }
 
-func (list *ListResponse) GetInterestCategory(id string, params *BasicQueryParams) (*InterestCategory, error) {
+func (list *ListResponse) GetInterestCategory(ctx context.Context, id string, params *BasicQueryParams) (*InterestCategory, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_interest_category_path, list.ID, id)
+	endpoint := fmt.Sprintf(singleInterestCategoryPath, list.ID, id)
 	response := new(InterestCategory)
 	response.api = list.api
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (list *ListResponse) CreateInterestCategory(body *InterestCategoryRequest) (*InterestCategory, error) {
+func (list *ListResponse) CreateInterestCategory(ctx context.Context, body *InterestCategoryRequest) (*InterestCategory, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(interest_categories_path, list.ID)
+	endpoint := fmt.Sprintf(interestCategoriesPath, list.ID)
 	response := new(InterestCategory)
 	response.api = list.api
 
-	return response, list.api.Request("POST", endpoint, nil, body, response)
+	return response, list.api.Request(ctx, http.MethodPost, endpoint, nil, body, response)
 }
 
-func (list *ListResponse) UpdateInterestCategory(id string, body *InterestCategoryRequest) (*InterestCategory, error) {
+func (list *ListResponse) UpdateInterestCategory(ctx context.Context, id string, body *InterestCategoryRequest) (*InterestCategory, error) {
 	if list.ID == "" {
 		return nil, errors.New("No ID provided on list")
 	}
 
-	endpoint := fmt.Sprintf(single_interest_category_path, list.ID, id)
+	endpoint := fmt.Sprintf(singleInterestCategoryPath, list.ID, id)
 	response := new(InterestCategory)
 	response.api = list.api
 
-	return response, list.api.Request("PATCH", endpoint, nil, body, response)
+	return response, list.api.Request(ctx, http.MethodPatch, endpoint, nil, body, response)
 }
 
-func (list *ListResponse) DeleteInterestCategory(id string) (bool, error) {
+func (list *ListResponse) DeleteInterestCategory(ctx context.Context, id string) (bool, error) {
 	if list.ID == "" {
 		return false, errors.New("No ID provided on list")
 	}
 
-	endpoint := fmt.Sprintf(single_interest_category_path, list.ID, id)
-	return list.api.RequestOk("DELETE", endpoint)
+	endpoint := fmt.Sprintf(singleInterestCategoryPath, list.ID, id)
+	return list.api.RequestOk(ctx, http.MethodDelete, endpoint)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -463,37 +466,37 @@ type InterestRequest struct {
 	DisplayOrder int    `json:"display_order"`
 }
 
-func (list *ListResponse) GetInterests(interestCategoryID string, params *ExtendedQueryParams) (*ListOfInterests, error) {
+func (list *ListResponse) GetInterests(ctx context.Context, interestCategoryID string, params *ExtendedQueryParams) (*ListOfInterests, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(interests_path, list.ID, interestCategoryID)
+	endpoint := fmt.Sprintf(interestsPath, list.ID, interestCategoryID)
 	response := new(ListOfInterests)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (list *ListResponse) GetInterest(interestCategoryID, interestID string, params *BasicQueryParams) (*Interest, error) {
+func (list *ListResponse) GetInterest(ctx context.Context, interestCategoryID, interestID string, params *BasicQueryParams) (*Interest, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_interest_path, list.ID, interestCategoryID, interestID)
+	endpoint := fmt.Sprintf(singleInterestPath, list.ID, interestCategoryID, interestID)
 	response := new(Interest)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (interestCategory *InterestCategory) CreateInterest(body *InterestRequest) (*Interest, error) {
-	if err := interestCategory.CanMakeRequest(); err != nil {
+func (ic *InterestCategory) CreateInterest(ctx context.Context, body *InterestRequest) (*Interest, error) {
+	if err := ic.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(interests_path, interestCategory.ListID, interestCategory.ID)
+	endpoint := fmt.Sprintf(interestsPath, ic.ListID, ic.ID)
 	response := new(Interest)
 
-	return response, interestCategory.api.Request("POST", endpoint, nil, body, response)
+	return response, ic.api.Request(ctx, http.MethodPost, endpoint, nil, body, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -522,15 +525,15 @@ type BatchSubscribeMembersRequest struct {
 	UpdateExisting bool            `json:"update_existing"`
 }
 
-func (list *ListResponse) BatchSubscribeMembers(body *BatchSubscribeMembersRequest) (*BatchSubscribeMembersResponse, error) {
+func (list *ListResponse) BatchSubscribeMembers(ctx context.Context, body *BatchSubscribeMembersRequest) (*BatchSubscribeMembersResponse, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(lists_batch_subscribe_members, list.ID)
+	endpoint := fmt.Sprintf(listsBatchSubscribeMembers, list.ID)
 	response := new(BatchSubscribeMembersResponse)
 
-	return response, list.api.Request("POST", endpoint, nil, body, response)
+	return response, list.api.Request(ctx, http.MethodPost, endpoint, nil, body, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -611,35 +614,35 @@ type MergeFieldRequest struct {
 	HelpText string `json:"help_text"`
 }
 
-func (list *ListResponse) GetMergeFields(params *MergeFieldsParams) (*ListOfMergeFields, error) {
+func (list *ListResponse) GetMergeFields(ctx context.Context, params *MergeFieldsParams) (*ListOfMergeFields, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(merge_fields_path, list.ID)
+	endpoint := fmt.Sprintf(mergeFieldsPath, list.ID)
 	response := new(ListOfMergeFields)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (list *ListResponse) GetMergeField(params *MergeFieldParams) (*MergeField, error) {
+func (list *ListResponse) GetMergeField(ctx context.Context, params *MergeFieldParams) (*MergeField, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(merge_field_path, list.ID, params.MergeID)
+	endpoint := fmt.Sprintf(mergeFieldPath, list.ID, params.MergeID)
 	response := new(MergeField)
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (list *ListResponse) CreateMergeField(body *MergeFieldRequest) (*MergeField, error) {
+func (list *ListResponse) CreateMergeField(ctx context.Context, body *MergeFieldRequest) (*MergeField, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(merge_fields_path, list.ID)
+	endpoint := fmt.Sprintf(mergeFieldsPath, list.ID)
 	response := new(MergeField)
 
-	return response, list.api.Request("POST", endpoint, nil, body, response)
+	return response, list.api.Request(ctx, http.MethodPost, endpoint, nil, body, response)
 }

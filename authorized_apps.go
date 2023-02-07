@@ -1,10 +1,14 @@
 package gochimp3
 
-import "fmt"
+import (
+	"context"
+	"fmt"
+	"net/http"
+)
 
 const (
-	authorized_apps_path       = "/authorized-apps"
-	single_authorized_app_path = authorized_apps_path + "/%s"
+	authorizedAppsPath      = "/authorized-apps"
+	singleAuthorizedAppPath = authorizedAppsPath + "/%s"
 )
 
 type ListOfAuthorizedApps struct {
@@ -30,10 +34,10 @@ type AuthorizedAppCreateResponse struct {
 	ViewerToken string `json:"viewer_token"`
 }
 
-func (api *API) GetAuthorizedApps(params *ExtendedQueryParams) (*ListOfAuthorizedApps, error) {
+func (api *API) GetAuthorizedApps(ctx context.Context, params *ExtendedQueryParams) (*ListOfAuthorizedApps, error) {
 	response := new(ListOfAuthorizedApps)
 
-	err := api.Request("GET", authorized_apps_path, params, nil, response)
+	err := api.Request(ctx, http.MethodGet, authorizedAppsPath, params, nil, response)
 	if err != nil {
 		return nil, err
 	}
@@ -41,10 +45,10 @@ func (api *API) GetAuthorizedApps(params *ExtendedQueryParams) (*ListOfAuthorize
 	return response, nil
 }
 
-func (api *API) CreateAuthorizedApp(body *AuthorizedAppRequest) (*AuthorizedAppCreateResponse, error) {
+func (api *API) CreateAuthorizedApp(ctx context.Context, body *AuthorizedAppRequest) (*AuthorizedAppCreateResponse, error) {
 	response := new(AuthorizedAppCreateResponse)
 
-	err := api.Request("GET", authorized_apps_path, nil, body, response)
+	err := api.Request(ctx, http.MethodGet, authorizedAppsPath, nil, body, response)
 	if err != nil {
 		return nil, err
 	}
@@ -52,11 +56,11 @@ func (api *API) CreateAuthorizedApp(body *AuthorizedAppRequest) (*AuthorizedAppC
 	return response, nil
 }
 
-func (api *API) GetAuthroizedApp(id string, params *BasicQueryParams) (*AuthorizedApp, error) {
+func (api *API) GetAuthorizedApp(ctx context.Context, id string, params *BasicQueryParams) (*AuthorizedApp, error) {
 	response := new(AuthorizedApp)
-	endpoint := fmt.Sprintf(single_authorized_app_path, id)
+	endpoint := fmt.Sprintf(singleAuthorizedAppPath, id)
 
-	err := api.Request("GET", endpoint, params, nil, response)
+	err := api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 	if err != nil {
 		return nil, err
 	}

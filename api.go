@@ -2,10 +2,9 @@ package gochimp3
 
 import (
 	"bytes"
-	"encoding/json"
+	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"log"
 	"net/http"
 	"net/http/httputil"
@@ -13,6 +12,9 @@ import (
 	"reflect"
 	"regexp"
 	"time"
+
+	"github.com/cockroachdb/errors"
+	json "github.com/json-iterator/go"
 )
 
 // URIFormat defines the endpoint for a single app
@@ -36,7 +38,7 @@ type API struct {
 	endpoint string
 }
 
-// New creates a API
+// New creates an API
 func New(apiKey string) *API {
 	u := url.URL{}
 	u.Scheme = "https"
@@ -51,7 +53,7 @@ func New(apiKey string) *API {
 }
 
 // Request will make a call to the actual API.
-func (api *API) Request(method, path string, params QueryParams, body, response interface{}) error {
+func (api *API) Request(ctx context.Context, method, path string, params QueryParams, body, response any) error {
 	client := &http.Client{Transport: api.Transport}
 	if api.Timeout > 0 {
 		client.Timeout = api.Timeout
@@ -68,17 +70,18 @@ func (api *API) Request(method, path string, params QueryParams, body, response 
 	if body != nil {
 		data, err = json.Marshal(body)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
+
 		bodyBytes = bytes.NewBuffer(data)
 		if api.Debug {
 			log.Printf("Adding body: %+v\n", body)
 		}
 	}
 
-	req, err := http.NewRequest(method, requestURL, bodyBytes)
+	req, err := http.NewRequestWithContext(ctx, method, requestURL, bodyBytes)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	req.Header.Set("Content-Type", "application/json")
@@ -92,7 +95,7 @@ func (api *API) Request(method, path string, params QueryParams, body, response 
 			}
 		}
 		req.URL.RawQuery = queryParams.Encode()
-		
+
 		if api.Debug {
 			log.Printf("Adding query params: %q\n", req.URL.Query())
 		}
@@ -105,29 +108,29 @@ func (api *API) Request(method, path string, params QueryParams, body, response 
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
-	defer resp.Body.Close()
+	defer func() { _ = resp.Body.Close() }()
 
 	if api.Debug {
 		dump, _ := httputil.DumpResponse(resp, true)
 		log.Printf("%s", string(dump))
 	}
 
-	data, err = ioutil.ReadAll(resp.Body)
+	data, err = io.ReadAll(resp.Body)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	if resp.StatusCode >= 200 && resp.StatusCode < 300 {
-		// Do not unmarshall response is nil
+		// Do not unmarshal response is nil
 		if response == nil || reflect.ValueOf(response).IsNil() || len(data) == 0 {
 			return nil
 		}
 
 		err = json.Unmarshal(data, response)
 		if err != nil {
-			return err
+			return errors.WithStack(err)
 		}
 
 		return nil
@@ -138,8 +141,8 @@ func (api *API) Request(method, path string, params QueryParams, body, response 
 }
 
 // RequestOk Make Request ignoring body and return true if HTTP status code is 2xx.
-func (api *API) RequestOk(method, path string) (bool, error) {
-	err := api.Request(method, path, nil, nil, nil)
+func (api *API) RequestOk(ctx context.Context, method, path string) (bool, error) {
+	err := api.Request(ctx, method, path, nil, nil, nil)
 	if err != nil {
 		return false, err
 	}
@@ -150,7 +153,7 @@ func parseAPIError(data []byte) error {
 	apiError := new(APIError)
 	err := json.Unmarshal(data, apiError)
 	if err != nil {
-		return err
+		return errors.WithStack(err)
 	}
 
 	return apiError

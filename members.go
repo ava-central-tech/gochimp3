@@ -1,24 +1,26 @@
 package gochimp3
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"net/http"
+
+	"github.com/cockroachdb/errors"
 )
 
 const (
-	members_path       = "/lists/%s/members"
-	single_member_path = members_path + "/%s"
+	membersPath      = "/lists/%s/members"
+	singleMemberPath = membersPath + "/%s"
 
-	member_activity_path = single_member_path + "/activity"
-	member_goals_path    = single_member_path + "/goals"
+	memberActivityPath = singleMemberPath + "/activity"
+	memberGoalsPath    = singleMemberPath + "/goals"
 
-	member_notes_path       = single_member_path + "/notes"
-	single_member_note_path = member_notes_path + "/%s"
+	memberNotesPath      = singleMemberPath + "/notes"
+	singleMemberNotePath = memberNotesPath + "/%s"
 
-	member_tags_path       = single_member_path + "/tags"
-	single_member_tag_path = member_tags_path + "/%s"
+	memberTagsPath = singleMemberPath + "/tags"
 
-	delete_permanent_path = single_member_path + "/actions/delete-permanent"
+	deletePermanentPath = singleMemberPath + "/actions/delete-permanent"
 )
 
 type ListOfMembers struct {
@@ -29,38 +31,38 @@ type ListOfMembers struct {
 }
 
 type MemberResponse struct {
-	EmailAddress    string                 `json:"email_address"`
-	EmailType       string                 `json:"email_type,omitempty"`
-	Status          string                 `json:"status"`
-	StatusIfNew     string                 `json:"status_if_new,omitempty"`
-	MergeFields     map[string]interface{} `json:"merge_fields,omitempty"`
-	Interests       map[string]bool        `json:"interests,omitempty"`
-	Language        string                 `json:"language"`
-	VIP             bool                   `json:"vip"`
-	Location        *MemberLocation        `json:"location,omitempty"`
-	IPOpt           string                 `json:"ip_opt,omitempty"`
-	IPSignup        string                 `json:"ip_signup,omitempty"`
-	Tags            []MemberTag            `json:"tags,omitempty"`
-	TimestampSignup string                 `json:"timestamp_signup,omitempty"`
-	TimestampOpt    string                 `json:"timestamp_opt,omitempty"`
+	EmailAddress    string          `json:"email_address"`
+	EmailType       string          `json:"email_type,omitempty"`
+	Status          string          `json:"status"`
+	StatusIfNew     string          `json:"status_if_new,omitempty"`
+	MergeFields     map[string]any  `json:"merge_fields,omitempty"`
+	Interests       map[string]bool `json:"interests,omitempty"`
+	Language        string          `json:"language"`
+	VIP             bool            `json:"vip"`
+	Location        *MemberLocation `json:"location,omitempty"`
+	IPOpt           string          `json:"ip_opt,omitempty"`
+	IPSignup        string          `json:"ip_signup,omitempty"`
+	Tags            []MemberTag     `json:"tags,omitempty"`
+	TimestampSignup string          `json:"timestamp_signup,omitempty"`
+	TimestampOpt    string          `json:"timestamp_opt,omitempty"`
 }
 
 type MemberRequest struct {
-	EmailAddress         string                 `json:"email_address"`
-	EmailType            string                 `json:"email_type,omitempty"`
-	Status               string                 `json:"status"`
-	StatusIfNew          string                 `json:"status_if_new,omitempty"`
-	MergeFields          map[string]interface{} `json:"merge_fields,omitempty"`
-	Interests            map[string]bool        `json:"interests,omitempty"`
-	Language             string                 `json:"language"`
-	VIP                  bool                   `json:"vip"`
-	Location             *MemberLocation        `json:"location,omitempty"`
-	MarketingPermissions *MarketingPermissions  `json:"marketing_permissions,omitempty"`
-	IPOpt                string                 `json:"ip_opt,omitempty"`
-	IPSignup             string                 `json:"ip_signup,omitempty"`
-	Tags                 []string               `json:"tags,omitempty"`
-	TimestampSignup      string                 `json:"timestamp_signup,omitempty"`
-	TimestampOpt         string                 `json:"timestamp_opt,omitempty"`
+	EmailAddress         string                `json:"email_address"`
+	EmailType            string                `json:"email_type,omitempty"`
+	Status               string                `json:"status"`
+	StatusIfNew          string                `json:"status_if_new,omitempty"`
+	MergeFields          map[string]any        `json:"merge_fields,omitempty"`
+	Interests            map[string]bool       `json:"interests,omitempty"`
+	Language             string                `json:"language"`
+	VIP                  bool                  `json:"vip"`
+	Location             *MemberLocation       `json:"location,omitempty"`
+	MarketingPermissions *MarketingPermissions `json:"marketing_permissions,omitempty"`
+	IPOpt                string                `json:"ip_opt,omitempty"`
+	IPSignup             string                `json:"ip_signup,omitempty"`
+	Tags                 []string              `json:"tags,omitempty"`
+	TimestampSignup      string                `json:"timestamp_signup,omitempty"`
+	TimestampOpt         string                `json:"timestamp_opt,omitempty"`
 }
 
 type Member struct {
@@ -125,15 +127,15 @@ type MemberTag struct {
 	Name string `json:"name"`
 }
 
-func (list *ListResponse) GetMembers(params *InterestCategoriesQueryParams) (*ListOfMembers, error) {
+func (list *ListResponse) GetMembers(ctx context.Context, params *InterestCategoriesQueryParams) (*ListOfMembers, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(members_path, list.ID)
+	endpoint := fmt.Sprintf(membersPath, list.ID)
 	response := new(ListOfMembers)
 
-	err := list.api.Request("GET", endpoint, params, nil, response)
+	err := list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 	if err != nil {
 		return nil, err
 	}
@@ -145,70 +147,70 @@ func (list *ListResponse) GetMembers(params *InterestCategoriesQueryParams) (*Li
 	return response, nil
 }
 
-func (list *ListResponse) GetMember(id string, params *BasicQueryParams) (*Member, error) {
+func (list *ListResponse) GetMember(ctx context.Context, id string, params *BasicQueryParams) (*Member, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_member_path, list.ID, id)
+	endpoint := fmt.Sprintf(singleMemberPath, list.ID, id)
 	response := new(Member)
 	response.api = list.api
 
-	return response, list.api.Request("GET", endpoint, params, nil, response)
+	return response, list.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (list *ListResponse) CreateMember(body *MemberRequest) (*Member, error) {
+func (list *ListResponse) CreateMember(ctx context.Context, body *MemberRequest) (*Member, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(members_path, list.ID)
+	endpoint := fmt.Sprintf(membersPath, list.ID)
 	response := new(Member)
 	response.api = list.api
 
-	return response, list.api.Request("POST", endpoint, nil, body, response)
+	return response, list.api.Request(ctx, http.MethodPost, endpoint, nil, body, response)
 }
 
-func (list *ListResponse) UpdateMember(id string, body *MemberRequest) (*Member, error) {
+func (list *ListResponse) UpdateMember(ctx context.Context, id string, body *MemberRequest) (*Member, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_member_path, list.ID, id)
+	endpoint := fmt.Sprintf(singleMemberPath, list.ID, id)
 	response := new(Member)
 	response.api = list.api
 
-	return response, list.api.Request("PATCH", endpoint, nil, body, response)
+	return response, list.api.Request(ctx, http.MethodPatch, endpoint, nil, body, response)
 }
 
-func (list *ListResponse) AddOrUpdateMember(id string, body *MemberRequest) (*Member, error) {
+func (list *ListResponse) AddOrUpdateMember(ctx context.Context, id string, body *MemberRequest) (*Member, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_member_path, list.ID, id)
+	endpoint := fmt.Sprintf(singleMemberPath, list.ID, id)
 	response := new(Member)
 	response.api = list.api
 
-	return response, list.api.Request("PUT", endpoint, nil, body, response)
+	return response, list.api.Request(ctx, http.MethodPut, endpoint, nil, body, response)
 }
 
-func (list *ListResponse) DeleteMember(id string) (bool, error) {
+func (list *ListResponse) DeleteMember(ctx context.Context, id string) (bool, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return false, err
 	}
 
-	endpoint := fmt.Sprintf(single_member_path, list.ID, id)
-	return list.api.RequestOk("DELETE", endpoint)
+	endpoint := fmt.Sprintf(singleMemberPath, list.ID, id)
+	return list.api.RequestOk(ctx, http.MethodDelete, endpoint)
 }
 
-func (list *ListResponse) DeleteMemberPermanent(id string) (bool, error) {
+func (list *ListResponse) DeleteMemberPermanent(ctx context.Context, id string) (bool, error) {
 	if err := list.CanMakeRequest(); err != nil {
 		return false, err
 	}
 
-	endpoint := fmt.Sprintf(delete_permanent_path, list.ID, id)
-	return list.api.RequestOk("POST", endpoint)
+	endpoint := fmt.Sprintf(deletePermanentPath, list.ID, id)
+	return list.api.RequestOk(ctx, http.MethodPost, endpoint)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -233,15 +235,15 @@ type MemberActivity struct {
 	ParentCampaign string `json:"parent_campaign"`
 }
 
-func (mem *Member) GetActivity(params *BasicQueryParams) (*ListOfMemberActivity, error) {
+func (mem *Member) GetActivity(ctx context.Context, params *BasicQueryParams) (*ListOfMemberActivity, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(member_activity_path, mem.ListID, mem.ID)
+	endpoint := fmt.Sprintf(memberActivityPath, mem.ListID, mem.ID)
 	response := new(ListOfMemberActivity)
 
-	return response, mem.api.Request("GET", endpoint, params, nil, response)
+	return response, mem.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -263,15 +265,15 @@ type MemberGoal struct {
 	Data          string `json:"data"`
 }
 
-func (mem *Member) GetGoals(params *BasicQueryParams) (*ListOfMemberGoals, error) {
+func (mem *Member) GetGoals(ctx context.Context, params *BasicQueryParams) (*ListOfMemberGoals, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(member_goals_path, mem.ListID, mem.ID)
+	endpoint := fmt.Sprintf(memberGoalsPath, mem.ListID, mem.ID)
 	response := new(ListOfMemberGoals)
 
-	return response, mem.api.Request("GET", endpoint, params, nil, response)
+	return response, mem.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -298,65 +300,65 @@ type MemberNoteLong struct {
 	withLinks
 }
 
-func (mem *Member) GetNotes(params *ExtendedQueryParams) (*ListOfMemberNotes, error) {
+func (mem *Member) GetNotes(ctx context.Context, params *ExtendedQueryParams) (*ListOfMemberNotes, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(member_notes_path, mem.ListID, mem.ID)
+	endpoint := fmt.Sprintf(memberNotesPath, mem.ListID, mem.ID)
 	response := new(ListOfMemberNotes)
 
-	return response, mem.api.Request("GET", endpoint, params, nil, response)
+	return response, mem.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (mem *Member) CreateNote(msg string) (*MemberNoteLong, error) {
+func (mem *Member) CreateNote(ctx context.Context, msg string) (*MemberNoteLong, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(member_notes_path, mem.ListID, mem.ID)
+	endpoint := fmt.Sprintf(memberNotesPath, mem.ListID, mem.ID)
 	response := new(MemberNoteLong)
 
 	body := struct{ Note string }{
 		Note: msg,
 	}
 
-	return response, mem.api.Request("POST", endpoint, nil, &body, response)
+	return response, mem.api.Request(ctx, http.MethodPost, endpoint, nil, &body, response)
 }
 
-func (mem *Member) UpdateNote(id, msg string) (*MemberNoteLong, error) {
+func (mem *Member) UpdateNote(ctx context.Context, id, msg string) (*MemberNoteLong, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_member_note_path, mem.ListID, mem.ID, id)
+	endpoint := fmt.Sprintf(singleMemberNotePath, mem.ListID, mem.ID, id)
 	response := new(MemberNoteLong)
 
 	body := struct{ Note string }{
 		Note: msg,
 	}
 
-	return response, mem.api.Request("PATCH", endpoint, nil, &body, response)
+	return response, mem.api.Request(ctx, http.MethodPatch, endpoint, nil, &body, response)
 }
 
-func (mem *Member) GetNote(id string, params *BasicQueryParams) (*MemberNoteLong, error) {
+func (mem *Member) GetNote(ctx context.Context, id string, params *BasicQueryParams) (*MemberNoteLong, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(single_member_note_path, mem.ListID, mem.ID, id)
+	endpoint := fmt.Sprintf(singleMemberNotePath, mem.ListID, mem.ID, id)
 	response := new(MemberNoteLong)
 
-	return response, mem.api.Request("GET", endpoint, params, nil, response)
+	return response, mem.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (mem *Member) DeleteNote(id string) (bool, error) {
+func (mem *Member) DeleteNote(ctx context.Context, id string) (bool, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return false, err
 	}
 
-	endpoint := fmt.Sprintf(single_member_note_path, mem.ListID, mem.ID, id)
-	return mem.api.RequestOk("DELETE", endpoint)
+	endpoint := fmt.Sprintf(singleMemberNotePath, mem.ListID, mem.ID, id)
+	return mem.api.RequestOk(ctx, http.MethodDelete, endpoint)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -383,23 +385,23 @@ type MemberTagLong struct {
 	withLinks
 }
 
-func (mem *Member) GetTags(params *ExtendedQueryParams) (*ListOfMemberTags, error) {
+func (mem *Member) GetTags(ctx context.Context, params *ExtendedQueryParams) (*ListOfMemberTags, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(member_tags_path, mem.ListID, mem.ID)
+	endpoint := fmt.Sprintf(memberTagsPath, mem.ListID, mem.ID)
 	response := new(ListOfMemberTags)
 
-	return response, mem.api.Request("GET", endpoint, params, nil, response)
+	return response, mem.api.Request(ctx, http.MethodGet, endpoint, params, nil, response)
 }
 
-func (mem *Member) UpdateTags(tags []UpdateMemberTag) (*ListOfMemberTags, error) {
+func (mem *Member) UpdateTags(ctx context.Context, tags []UpdateMemberTag) (*ListOfMemberTags, error) {
 	if err := mem.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	endpoint := fmt.Sprintf(member_tags_path, mem.ListID, mem.ID)
+	endpoint := fmt.Sprintf(memberTagsPath, mem.ListID, mem.ID)
 	response := new(ListOfMemberTags)
 
 	body := struct {
@@ -408,5 +410,5 @@ func (mem *Member) UpdateTags(tags []UpdateMemberTag) (*ListOfMemberTags, error)
 		Tags: tags,
 	}
 
-	return response, mem.api.Request("POST", endpoint, nil, &body, response)
+	return response, mem.api.Request(ctx, http.MethodPost, endpoint, nil, &body, response)
 }

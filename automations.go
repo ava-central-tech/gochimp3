@@ -1,26 +1,29 @@
 package gochimp3
 
 import (
-	"errors"
+	"context"
 	"fmt"
+	"net/http"
+
+	"github.com/cockroachdb/errors"
 )
 
 const (
-	automations_path       = "/automations"
-	single_automation_path = automations_path + "/%s"
-	pause_all_emails_path  = single_automation_path + "/actions/pause-all-emails"
-	start_all_emails_path  = single_automation_path + "/actions/start-all-emails"
+	automationsPath      = "/automations"
+	singleAutomationPath = automationsPath + "/%s"
+	pauseAllEmailsPath   = singleAutomationPath + "/actions/pause-all-emails"
+	startAllEmailsPath   = singleAutomationPath + "/actions/start-all-emails"
 
-	automation_email_path        = single_automation_path + "/emails"
-	single_automation_email_path = automation_email_path + "/%s"
+	automationEmailPath       = singleAutomationPath + "/emails"
+	singleAutomationEmailPath = automationEmailPath + "/%s"
 
-	pause_single_email_path = single_automation_email_path + "/actions/pause"
-	start_single_email_path = single_automation_email_path + "/actions/start"
+	pauseSingleEmailPath = singleAutomationEmailPath + "/actions/pause"
+	startSingleEmailPath = singleAutomationEmailPath + "/actions/start"
 
-	automation_queues_path       = single_automation_email_path + "/queue"
-	single_automation_queue_path = automation_queues_path + "/%s"
+	automationQueuesPath      = singleAutomationEmailPath + "/queue"
+	singleAutomationQueuePath = automationQueuesPath + "/%s"
 
-	removed_subscribers_automation_path = single_automation_path + "/removed-subscribers"
+	removedSubscribersAutomationPath = singleAutomationPath + "/removed-subscribers"
 )
 
 type ListOfAutomations struct {
@@ -119,16 +122,16 @@ type ReportSummary struct {
 
 func (auto *Automation) CanMakeRequest() error {
 	if auto.ID == "" {
-		return errors.New("No ID provided")
+		return errors.New("no ID provided")
 	}
 
 	return nil
 }
 
-func (api *API) GetAutomations(params *BasicQueryParams) (*ListOfAutomations, error) {
+func (api *API) GetAutomations(ctx context.Context, params *BasicQueryParams) (*ListOfAutomations, error) {
 	response := new(ListOfAutomations)
 
-	err := api.Request("GET", automations_path, params, nil, response)
+	err := api.Request(ctx, http.MethodGet, automationsPath, params, nil, response)
 	if err != nil {
 		return nil, err
 	}
@@ -141,59 +144,59 @@ func (api *API) GetAutomations(params *BasicQueryParams) (*ListOfAutomations, er
 }
 
 // TODO query params?
-func (api *API) GetAutomation(id string) (*Automation, error) {
-	endpoint := fmt.Sprintf(single_automation_path, id)
+func (api *API) GetAutomation(ctx context.Context, id string) (*Automation, error) {
+	endpoint := fmt.Sprintf(singleAutomationPath, id)
 
 	response := new(Automation)
 	response.api = api
 
-	return response, api.Request("GET", endpoint, nil, nil, response)
+	return response, api.Request(ctx, http.MethodGet, endpoint, nil, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
 // Actions for Sending Emails
 // ------------------------------------------------------------------------------------------------
 
-func (auto *Automation) PauseSendingAll() (bool, error) {
+func (auto *Automation) PauseSendingAll(ctx context.Context) (bool, error) {
 	if err := auto.CanMakeRequest(); err != nil {
 		return false, err
 	}
-	return auto.api.PauseSendingAll(auto.ID)
+	return auto.api.PauseSendingAll(ctx, auto.ID)
 }
 
-func (api *API) PauseSendingAll(id string) (bool, error) {
-	endpoint := fmt.Sprintf(pause_all_emails_path, id)
-	return api.RequestOk("POST", endpoint)
+func (api *API) PauseSendingAll(ctx context.Context, id string) (bool, error) {
+	endpoint := fmt.Sprintf(pauseAllEmailsPath, id)
+	return api.RequestOk(ctx, http.MethodPost, endpoint)
 }
 
-func (auto *Automation) StartSendingAll() (bool, error) {
+func (auto *Automation) StartSendingAll(ctx context.Context) (bool, error) {
 	if err := auto.CanMakeRequest(); err != nil {
 		return false, err
 	}
-	return auto.api.StartSendingAll(auto.ID)
+	return auto.api.StartSendingAll(ctx, auto.ID)
 }
 
-func (api *API) StartSendingAll(id string) (bool, error) {
-	endpoint := fmt.Sprintf(start_all_emails_path, id)
-	return api.RequestOk("POST", endpoint)
+func (api *API) StartSendingAll(ctx context.Context, id string) (bool, error) {
+	endpoint := fmt.Sprintf(startAllEmailsPath, id)
+	return api.RequestOk(ctx, http.MethodPost, endpoint)
 }
 
-func (email *AutomationEmail) PauseSending() (bool, error) {
-	return email.api.PauseSending(email.WorkflowID, email.ID)
+func (email *AutomationEmail) PauseSending(ctx context.Context) (bool, error) {
+	return email.api.PauseSending(ctx, email.WorkflowID, email.ID)
 }
 
-func (api *API) PauseSending(workflowID, emailID string) (bool, error) {
-	endpoint := fmt.Sprintf(pause_single_email_path, workflowID, emailID)
-	return api.RequestOk("POST", endpoint)
+func (api *API) PauseSending(ctx context.Context, workflowID, emailID string) (bool, error) {
+	endpoint := fmt.Sprintf(pauseSingleEmailPath, workflowID, emailID)
+	return api.RequestOk(ctx, http.MethodPost, endpoint)
 }
 
-func (email *AutomationEmail) StartSending() (bool, error) {
-	return email.api.StartSending(email.WorkflowID, email.ID)
+func (email *AutomationEmail) StartSending(ctx context.Context) (bool, error) {
+	return email.api.StartSending(ctx, email.WorkflowID, email.ID)
 }
 
-func (api *API) StartSending(workflowID, emailID string) (bool, error) {
-	endpoint := fmt.Sprintf(start_single_email_path, workflowID, emailID)
-	return api.RequestOk("POST", endpoint)
+func (api *API) StartSending(ctx context.Context, workflowID, emailID string) (bool, error) {
+	endpoint := fmt.Sprintf(startSingleEmailPath, workflowID, emailID)
+	return api.RequestOk(ctx, http.MethodPost, endpoint)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -243,45 +246,45 @@ type AutomationDelay struct {
 
 func (email *AutomationEmail) CanMakeRequest() error {
 	if email.ID == "" {
-		return errors.New("No ID provided")
+		return errors.New("no ID provided")
 	}
 
 	return nil
 }
 
-func (auto *Automation) GetEmails() (*ListOfEmails, error) {
+func (auto *Automation) GetEmails(ctx context.Context) (*ListOfEmails, error) {
 	if err := auto.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	return auto.api.GetAutomationEmails(auto.ID)
+	return auto.api.GetAutomationEmails(ctx, auto.ID)
 }
 
-func (api *API) GetAutomationEmails(automationID string) (*ListOfEmails, error) {
-	endpoint := fmt.Sprintf(automation_email_path, automationID)
+func (api *API) GetAutomationEmails(ctx context.Context, automationID string) (*ListOfEmails, error) {
+	endpoint := fmt.Sprintf(automationEmailPath, automationID)
 	response := new(ListOfEmails)
 
 	for _, l := range response.Emails {
 		l.api = api
 	}
 
-	return response, api.Request("GET", endpoint, nil, nil, response)
+	return response, api.Request(ctx, http.MethodGet, endpoint, nil, nil, response)
 }
 
-func (auto *Automation) GetEmail(id string) (*AutomationEmail, error) {
+func (auto *Automation) GetEmail(ctx context.Context, id string) (*AutomationEmail, error) {
 	if err := auto.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	return auto.api.GetAutomationEmail(auto.ID, id)
+	return auto.api.GetAutomationEmail(ctx, auto.ID, id)
 }
 
-func (api *API) GetAutomationEmail(automationID, emailID string) (*AutomationEmail, error) {
-	endpoint := fmt.Sprintf(single_automation_email_path, automationID, emailID)
+func (api *API) GetAutomationEmail(ctx context.Context, automationID, emailID string) (*AutomationEmail, error) {
+	endpoint := fmt.Sprintf(singleAutomationEmailPath, automationID, emailID)
 	response := new(AutomationEmail)
 	response.api = api
 
-	return response, api.Request("GET", endpoint, nil, nil, response)
+	return response, api.Request(ctx, http.MethodGet, endpoint, nil, nil, response)
 }
 
 // ------------------------------------------------------------------------------------------------
@@ -311,59 +314,59 @@ type AutomationQueue struct {
 	api *API
 }
 
-func (email *AutomationEmail) GetQueues() (*ListOfAutomationQueues, error) {
+func (email *AutomationEmail) GetQueues(ctx context.Context) (*ListOfAutomationQueues, error) {
 	if err := email.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	return email.api.GetAutomationQueues(email.WorkflowID, email.ID)
+	return email.api.GetAutomationQueues(ctx, email.WorkflowID, email.ID)
 }
 
-func (api *API) GetAutomationQueues(workflowID, emailID string) (*ListOfAutomationQueues, error) {
-	endpoint := fmt.Sprintf(automation_queues_path, workflowID, emailID)
+func (api *API) GetAutomationQueues(ctx context.Context, workflowID, emailID string) (*ListOfAutomationQueues, error) {
+	endpoint := fmt.Sprintf(automationQueuesPath, workflowID, emailID)
 
 	response := new(ListOfAutomationQueues)
 	for _, l := range response.Queues {
 		l.api = api
 	}
 
-	return response, api.Request("GET", endpoint, nil, nil, response)
+	return response, api.Request(ctx, http.MethodGet, endpoint, nil, nil, response)
 }
 
-func (email *AutomationEmail) GetQueue(id string) (*AutomationQueue, error) {
+func (email *AutomationEmail) GetQueue(ctx context.Context, id string) (*AutomationQueue, error) {
 	if err := email.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	return email.api.GetAutomationQueue(email.WorkflowID, email.ID, id)
+	return email.api.GetAutomationQueue(ctx, email.WorkflowID, email.ID, id)
 }
 
-func (api *API) GetAutomationQueue(workflowID, emailID, subsID string) (*AutomationQueue, error) {
-	endpoint := fmt.Sprintf(single_automation_queue_path, workflowID, emailID, subsID)
+func (api *API) GetAutomationQueue(ctx context.Context, workflowID, emailID, subsID string) (*AutomationQueue, error) {
+	endpoint := fmt.Sprintf(singleAutomationQueuePath, workflowID, emailID, subsID)
 
 	response := new(AutomationQueue)
 	response.api = api
 
-	return response, api.Request("GET", endpoint, nil, nil, response)
+	return response, api.Request(ctx, http.MethodGet, endpoint, nil, nil, response)
 }
 
-func (email *AutomationEmail) CreateQueue(emailAddress string) (*AutomationQueue, error) {
+func (email *AutomationEmail) CreateQueue(ctx context.Context, emailAddress string) (*AutomationQueue, error) {
 	if err := email.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	return email.api.CreateAutomationEmailQueue(email.WorkflowID, email.ID, emailAddress)
+	return email.api.CreateAutomationEmailQueue(ctx, email.WorkflowID, email.ID, emailAddress)
 }
 
-func (api *API) CreateAutomationEmailQueue(workflowID, emailID, emailAddress string) (*AutomationQueue, error) {
-	endpoint := fmt.Sprintf(automation_queues_path, workflowID, emailID)
+func (api *API) CreateAutomationEmailQueue(ctx context.Context, workflowID, emailID, emailAddress string) (*AutomationQueue, error) {
+	endpoint := fmt.Sprintf(automationQueuesPath, workflowID, emailID)
 	response := new(AutomationQueue)
 
 	body := &AutomationQueueRequest{
 		EmailAddress: emailAddress,
 	}
 
-	err := api.Request("POST", endpoint, nil, body, response)
+	err := api.Request(ctx, http.MethodPost, endpoint, nil, body, response)
 	if err != nil {
 		return nil, err
 	}
@@ -394,37 +397,37 @@ type RemovedSubscriber struct {
 	withLinks
 }
 
-func (auto *Automation) GetRemovedSubscribers() (*ListOfRemovedSubscribers, error) {
+func (auto *Automation) GetRemovedSubscribers(ctx context.Context) (*ListOfRemovedSubscribers, error) {
 	if err := auto.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	return auto.api.GetAutomationRemovedSubscribers(auto.ID)
+	return auto.api.GetAutomationRemovedSubscribers(ctx, auto.ID)
 }
 
-func (api *API) GetAutomationRemovedSubscribers(workflowID string) (*ListOfRemovedSubscribers, error) {
-	endpoint := fmt.Sprintf(removed_subscribers_automation_path, workflowID)
+func (api *API) GetAutomationRemovedSubscribers(ctx context.Context, workflowID string) (*ListOfRemovedSubscribers, error) {
+	endpoint := fmt.Sprintf(removedSubscribersAutomationPath, workflowID)
 
 	response := new(ListOfRemovedSubscribers)
 
-	return response, api.Request("GET", endpoint, nil, nil, response)
+	return response, api.Request(ctx, http.MethodGet, endpoint, nil, nil, response)
 }
 
-func (auto *Automation) CreateRemovedSubscribers(emailAddress string) (*RemovedSubscriber, error) {
+func (auto *Automation) CreateRemovedSubscribers(ctx context.Context, emailAddress string) (*RemovedSubscriber, error) {
 	if err := auto.CanMakeRequest(); err != nil {
 		return nil, err
 	}
 
-	return auto.api.CreateAutomationRemovedSubscribers(auto.ID, emailAddress)
+	return auto.api.CreateAutomationRemovedSubscribers(ctx, auto.ID, emailAddress)
 }
 
-func (api *API) CreateAutomationRemovedSubscribers(workflowID, emailAddress string) (*RemovedSubscriber, error) {
-	endpoint := fmt.Sprintf(removed_subscribers_automation_path, workflowID)
+func (api *API) CreateAutomationRemovedSubscribers(ctx context.Context, workflowID, emailAddress string) (*RemovedSubscriber, error) {
+	endpoint := fmt.Sprintf(removedSubscribersAutomationPath, workflowID)
 
 	response := new(RemovedSubscriber)
 	body := &RemovedSubscriberRequest{
 		EmailAddress: emailAddress,
 	}
 
-	return response, api.Request("POST", endpoint, nil, body, response)
+	return response, api.Request(ctx, http.MethodPost, endpoint, nil, body, response)
 }

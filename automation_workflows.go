@@ -1,7 +1,7 @@
 package gochimp3
 
-type WorkflowType map[string]interface{}
-type TimeToRun map[string]interface{}
+type WorkflowType map[string]any
+type TimeToRun map[string]any
 
 // ------------------------------------------------------------------------------------------------
 // TimeToRun

@@ -1,8 +1,9 @@
 package gochimp3
 
 import (
-	"encoding/json"
 	"strings"
+
+	json "github.com/json-iterator/go"
 )
 
 const (
@@ -17,6 +18,7 @@ func (address *Address) MarshalJSON() ([]byte, error) {
 		Address:     *address,
 		CountryCode: strings.ToUpper(address.CountryCode),
 	}
+
 	return json.Marshal(tmp)
 }
 

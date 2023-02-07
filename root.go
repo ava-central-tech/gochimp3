@@ -1,7 +1,12 @@
 package gochimp3
 
+import (
+	"context"
+	"net/http"
+)
+
 const (
-	root_path = "/"
+	rootPath = "/"
 )
 
 type AccountContact struct {
@@ -30,14 +35,14 @@ type RootResponse struct {
 	ProEnabled       bool           `json:"pro_enabled"`
 	LastLogin        string         `json:"last_login"`
 	TotalSubscribers int            `json:"total_subscribers"`
-	IndustyStats     IndustryStats  `json:"industry_stats"`
+	IndustryStats    IndustryStats  `json:"industry_stats"`
 	Links            []Link         `json:"_links"`
 }
 
 // GetRoot queries the root of the API for stats
-func (api *API) GetRoot(params *BasicQueryParams) (*RootResponse, error) {
+func (api *API) GetRoot(ctx context.Context, params *BasicQueryParams) (*RootResponse, error) {
 	response := new(RootResponse)
-	err := api.Request("GET", root_path, params, nil, response)
+	err := api.Request(ctx, http.MethodGet, rootPath, params, nil, response)
 	if err != nil {
 		return nil, err
 	}

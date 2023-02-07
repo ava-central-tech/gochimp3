@@ -1,18 +1,18 @@
 package gochimp3
 
 import (
-	"encoding/json"
+	"context"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"strings"
 	"testing"
 
+	json "github.com/json-iterator/go"
 	"github.com/stretchr/testify/assert"
 )
 
-var responder = func(w http.ResponseWriter, r *http.Request) {}
 var testServer = "http://localhost:9999"
 var delegate func(http.ResponseWriter, *http.Request)
 
@@ -26,7 +26,7 @@ func TestMain(m *testing.M) {
 	http.HandleFunc("/somewhere", func(w http.ResponseWriter, r *http.Request) {
 		delegate(w, r)
 	})
-	go http.ListenAndServe(":9999", nil)
+	go func() { _ = http.ListenAndServe(":9999", nil) }()
 	os.Exit(m.Run())
 }
 
@@ -38,7 +38,9 @@ func testAPI() *API {
 }
 
 func TestGoodGet(t *testing.T) {
-	expected := map[string]interface{}{
+	ctx := context.Background()
+
+	expected := map[string]any{
 		"one": "thing",
 		"two": "thing",
 	}
@@ -55,27 +57,29 @@ func TestGoodGet(t *testing.T) {
 		assert.Empty(t, r.URL.Query())
 
 		// check we sent an empty body
-		defer r.Body.Close()
-		body, err := ioutil.ReadAll(r.Body)
+		defer func() { _ = r.Body.Close() }()
+		body, err := io.ReadAll(r.Body)
 		fatalIf(t, err)
 		assert.Equal(t, 0, len(body))
 
 		// return something
 		data, _ := json.Marshal(expected)
-		fmt.Fprintf(w, string(data))
+		_, _ = fmt.Fprintf(w, string(data))
 	}
 
 	api := testAPI()
 
-	actual := make(map[string]interface{})
-	err := api.Request("GET", "/somewhere", nil, nil, &actual)
+	actual := make(map[string]any)
+	err := api.Request(ctx, http.MethodGet, "/somewhere", nil, nil, &actual)
 	fatalIf(t, err)
 
 	assert.EqualValues(t, expected, actual)
 }
 
 func TestGetWithParams(t *testing.T) {
-	expected := map[string]interface{}{
+	ctx := context.Background()
+
+	expected := map[string]any{
 		"one": "thing",
 		"two": "thing",
 	}
@@ -97,38 +101,43 @@ func TestGetWithParams(t *testing.T) {
 			}
 		}
 		data, _ := json.Marshal(expected)
-		fmt.Fprintf(w, string(data))
+		_, _ = fmt.Fprintf(w, string(data))
 	}
 
 	api := testAPI()
 
-	actual := make(map[string]interface{})
-	err := api.Request("GET", "/somewhere", &params, nil, &actual)
+	actual := make(map[string]any)
+	err := api.Request(ctx, http.MethodGet, "/somewhere", &params, nil, &actual)
 	fatalIf(t, err)
 
 	assert.EqualValues(t, expected, actual)
 }
 
 func TestGetEmptyResponse(t *testing.T) {
+	ctx := context.Background()
+
 	delegate = func(w http.ResponseWriter, r *http.Request) {}
 	api := testAPI()
-	err := api.Request("GET", "/somewhere", nil, nil, nil)
+	err := api.Request(ctx, http.MethodGet, "/somewhere", nil, nil, nil)
 	fatalIf(t, err)
-	result, err := api.RequestOk("GET", "/somewhere")
+	result, err := api.RequestOk(ctx, http.MethodGet, "/somewhere")
 	fatalIf(t, err)
 	assert.True(t, result)
 }
 
 func TestGetWithBody(t *testing.T) {
+	ctx := context.Background()
+
 	s := struct {
 		A string
 		B string
 	}{"string1", "string2"}
 
 	delegate = func(w http.ResponseWriter, r *http.Request) {
-		assert.Equal(t, "POST", r.Method)
-		defer r.Body.Close()
-		body, err := ioutil.ReadAll(r.Body)
+		assert.Equal(t, http.MethodPost, r.Method)
+		defer func() { _ = r.Body.Close() }()
+
+		body, err := io.ReadAll(r.Body)
 		fatalIf(t, err)
 
 		parsed := struct {
@@ -141,11 +150,13 @@ func TestGetWithBody(t *testing.T) {
 	}
 
 	api := testAPI()
-	err := api.Request("POST", "/somewhere", nil, &s, nil)
+	err := api.Request(ctx, http.MethodPost, "/somewhere", nil, &s, nil)
 	fatalIf(t, err)
 }
 
 func TestGetWithNon200Response(t *testing.T) {
+	ctx := context.Background()
+
 	delegate = func(w http.ResponseWriter, r *http.Request) {
 		data, err := json.Marshal(&APIError{
 			Type:     "some type",
@@ -159,14 +170,16 @@ func TestGetWithNon200Response(t *testing.T) {
 	}
 
 	api := testAPI()
-	ok, err := api.RequestOk("GET", "/somewhere")
+	ok, err := api.RequestOk(ctx, http.MethodGet, "/somewhere")
 	assert.False(t, ok)
 	assert.NotNil(t, err)
 }
 
 func TestMissingEndpoint(t *testing.T) {
+	ctx := context.Background()
+
 	api := testAPI()
-	ok, err := api.RequestOk("GET", "/nowhere")
+	ok, err := api.RequestOk(ctx, http.MethodGet, "/nowhere")
 	assert.False(t, ok)
 	assert.NotNil(t, err)
 }
